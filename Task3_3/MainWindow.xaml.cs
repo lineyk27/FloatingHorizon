@@ -21,12 +21,17 @@ namespace Task3_3
     /// </summary>
     public partial class MainWindow : Window
     {
-        double LowBound = -6.28; 
+        double LowBound = -6.28;
         double UpBound = 6.28;
 
+        Color col = Colors.Green;
+        bool Pointable = false;
         int CountHorizons = 10;
-        int CountPoints = 200;
-        double Thickness = 2.5;
+        int CountPoints = 10;
+        double Thickness = 1.5;
+
+        GeometryGroup group = new GeometryGroup();
+
         Line[,] Lines;
         double StepX
         {
@@ -53,7 +58,7 @@ namespace Task3_3
         {
             get
             {
-                return (int)Paint.Height / 2;
+                return (int)Paint.Height / 2 - 70;
             }
         }
         public MainWindow()
@@ -61,25 +66,22 @@ namespace Task3_3
             InitializeComponent();
             Lines = new Line[CountPoints, CountHorizons];
         }
-        public Brush Stroke(int i = 4)
+        public Brush Stroke(Color col, int i = 4)
         {
-            byte r = 0;
-            byte g = (byte)(100 + (15 * i));
-            byte b = 0;
-            var col = Color.FromRgb(r, g, b);
-
             var stroke = new SolidColorBrush(col);
-            stroke.Opacity = 20;
+            stroke.Opacity = 10;
             return stroke;
         }
         public void GenerateLines()
         {
-            int size = 36;
+            int size = 48;
             int k = 0;
             int l = 0;
 
             double magic = 0.0;
             double m_step = 0;
+
+            double added = (CountPoints % 2 == 0) ? StepX : 0;
 
             double startx, starty;
             for(double z = LowBound; z < UpBound; z += StepZ)
@@ -99,14 +101,12 @@ namespace Task3_3
 
                     //Debug.WriteLine($"k = {k}, l = {l}");
 
-
                     Lines[l, k] = line;
                     //Paint.Children.Add(line);
                     startx = x ;
                     starty = func(x, z);
                     l += 1;
                 }
-
                 k += 1;
                 magic += m_step;
             }
@@ -135,20 +135,169 @@ namespace Task3_3
                     }
                     if(Middle(current) >= Middle(last))
                     {
-                        current.Stroke = Stroke();
-                        Paint.Children.Add(current);
+                        current.Stroke = Stroke(col);
+                        //Paint.Children.Add(current);
+                        DrawUp(current, last);
                         last = current;
                     }
                     else if(Middle(current) <= Middle(last) && (Middle(current) <= Middle(min)))
                     {
-                        current.Stroke = Stroke();
-                        Paint.Children.Add(current);
+                        current.Stroke = Stroke(col);
+                        //Paint.Children.Add(current);
+                        DrawDown(min, current);
                         min = current;
+                    }
+                    else if (CheckIntersect(current, last))
+                    {
+                        DrawUp(current, last);
+                    }
+                    else if (CheckIntersect(min, current))
+                    {
+                        DrawDown(min, current);
                     }
                 }
             }
+        }
+        public bool CheckIntersect(Line p1, Line p2)
+        {
+            bool res = false;
+            if(p1.Y1 > p2.Y1 && p1.Y2 < p2.Y2)
+            {
+                res = true;
+            }
+            else if(p1.Y1 < p2.Y1 && p1.Y2 > p2.Y2)
+            {
+                res = true;
+            }
+            return res;
+        }
+        public void DrawDown(Line up, Line down)
+        {
+            if (!CheckIntersect(up, down))
+            {
+                if (!Paint.Children.Contains(up))
+                {
+                    Paint.Children.Add(up);
+                }
+                if (!Paint.Children.Contains(down))
+                {
+                    Paint.Children.Add(down);
+                }
+            }
+            else
+            {
+                var p = LinesIntersection(up, down);
 
+                //DrawPoint(p, Colors.Blue);
+                var line = new Line();
+                if (up.Y1 > p.Y)
+                {
+                    line.X1 = down.X1;
+                    line.Y1 = down.Y1;
+                    DrawPoint(p, Colors.Aquamarine);
+                    line.Stroke = Stroke(Colors.Red);
 
+                    line.X2 = p.X;
+                    line.Y2 = p.Y;
+                }
+                else
+                {
+                    line.X1 = down.X2;
+                    line.Y1 = down.Y2;
+                    DrawPoint(p, Colors.White);
+                    line.Stroke = Stroke(Colors.White);
+
+                    line.X2 = p.X;
+                    line.Y2 = p.Y;
+                }
+                Paint.Children.Add(line);
+            }
+        }
+        public void DrawUp(Line up, Line down)
+        {
+
+            if (!CheckIntersect(up, down))
+            {
+                if (!Paint.Children.Contains(up))
+                {
+                    Paint.Children.Add(up);
+                }
+                if (!Paint.Children.Contains(down))
+                {
+                    Paint.Children.Add(down);
+                }
+            }
+            else
+            {
+                var p = LinesIntersection(up, down);
+
+                //DrawPoint(p, Colors.Red);
+                var line = new Line();
+                if (up.Y1 > p.Y) {
+                    line.X1 = up.X1;
+                    line.Y1 = up.Y1;
+                    DrawPoint(p, Colors.Cyan);
+                    line.Stroke = Stroke(Colors.Yellow);
+
+                    line.X2 = p.X;
+                    line.Y2 = p.Y;
+                }
+                else
+                {
+                    line.X1 = up.X2;
+                    line.Y1 = up.Y2;
+                    DrawPoint(p, Colors.Brown);
+                    line.Stroke = Stroke(Colors.Blue);
+
+                    line.X2 = p.X;
+                    line.Y2 = p.Y;
+                }
+                Paint.Children.Add(line);
+
+            }
+        }
+        public void DrawPoint(Point p, Color color)
+        {
+            if(Double.IsNaN(p.X) || Double.IsInfinity(p.X)
+                || Double.IsNaN(p.Y) || Double.IsInfinity(p.Y))
+            {
+                return;
+            }
+            var line = new Line();
+            line.X1 = p.X;
+            line.X2 = p.X + 2;
+            line.Y1 = p.Y;
+            line.Y2 = p.Y + 2;
+            line.Stroke = new SolidColorBrush(color);
+            line.StrokeThickness = 10;
+            if (Pointable)
+            {
+                Paint.Children.Add(line);
+            }
+        }
+        public Point LinesIntersection(Line first, Line second)
+        {
+            Point result = new Point();
+
+            double xn = first.X1;
+            double xnk = first.X2;
+
+            double yn = first.Y1;
+            double ynk = first.Y2;
+
+            double ynp = second.Y1;
+            double ync = first.Y1;
+
+            double deltax = xnk - xn;
+            double deltayc = first.Y2 - first.Y1;
+            double deltayp = second.Y2 - second.Y1;
+            double m = ((int)(ynk - yn)) / deltax;
+
+            double x = xn - (deltax * (ynp - ync)) / (deltayp-deltayc);
+            double y = m * (x - xn) + yn;
+            result.Y = y;
+            result.X = x;
+            return result;
         }
         public double Middle(Line line)
         {

@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Task3_3"
         mc:Ignorable="d"
-        Title="MainWindow" Height="718" Width="1382">
+        Background="Black"
+        Title="MainWindow" Height="746.5" Width="1382">
     <Grid Margin="0,2,2,-1">
         <Canvas x:Name="Paint" Height="660" Width="1322" Background="Black" MouseDown="Paint_MouseDown" Margin="10"/>
     </Grid>
