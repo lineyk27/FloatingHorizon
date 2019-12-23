@@ -144,18 +144,6 @@ namespace Task3_3
                         Paint.Children.Add(current);
                         min = current;
                     }
-                    /*
-                    else if(Middle(current) > Middle(last))
-                    {
-                        current.Stroke = Stroke(j);
-                        Paint.Children.Add(current);
-                        last = current;
-                    }*/
-                    else
-                    {
-                        //current.Stroke = Stroke(CountHorizons - j);
-                        //Paint.Children.Add(current);
-                    }
                 }
             }
 
