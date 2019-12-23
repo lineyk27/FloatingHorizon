@@ -25,9 +25,8 @@ namespace Task3_3
         double UpBound = 6.28;
 
         int CountHorizons = 10;
-        int CountPoints = 50;
+        int CountPoints = 200;
         double Thickness = 2.5;
-
         Line[,] Lines;
         double StepX
         {
@@ -57,17 +56,15 @@ namespace Task3_3
                 return (int)Paint.Height / 2;
             }
         }
-
         public MainWindow()
         {
             InitializeComponent();
             Lines = new Line[CountPoints, CountHorizons];
-
         }
-        public Brush Stroke(int i = 0)
+        public Brush Stroke(int i = 4)
         {
             byte r = 0;
-            byte g = (byte)(100 + (10 * i));
+            byte g = (byte)(100 + (15 * i));
             byte b = 0;
             var col = Color.FromRgb(r, g, b);
 
@@ -81,16 +78,16 @@ namespace Task3_3
             int k = 0;
             int l = 0;
 
-            double magic = 0.1;
-            double m_step = 3;
+            double magic = 0.0;
+            double m_step = 0;
 
             double startx, starty;
-            for(double z = LowBound; z <= UpBound; z += StepZ)
+            for(double z = LowBound; z < UpBound; z += StepZ)
             {
                 startx = LowBound;
                 starty = func(LowBound, z);
                 l = 0;
-                for(double x = LowBound + StepX; x <= UpBound; x += StepX)
+                for (double x = LowBound + StepX; x <= UpBound + StepX; x += StepX)
                 {
                     var line = new Line();
                     line.StrokeThickness = Thickness;
@@ -100,13 +97,16 @@ namespace Task3_3
                     line.X2 = x * size + CenterX + magic;
                     line.Y2 = func(x,z) * size + CenterY + magic;
 
+                    //Debug.WriteLine($"k = {k}, l = {l}");
+
+
                     Lines[l, k] = line;
                     //Paint.Children.Add(line);
-
                     startx = x ;
                     starty = func(x, z);
                     l += 1;
                 }
+
                 k += 1;
                 magic += m_step;
             }
@@ -126,6 +126,7 @@ namespace Task3_3
                 Line min = null;
                 for(int j = 0; j < CountHorizons; j++)
                 {
+                    //Debug.WriteLine($"drawlines: i = {i}, j = {j}");
                     var current = Lines[i, j];
                     if(j == 0)
                     {
@@ -134,13 +135,13 @@ namespace Task3_3
                     }
                     if(Middle(current) >= Middle(last))
                     {
-                        current.Stroke = Stroke(j);
+                        current.Stroke = Stroke();
                         Paint.Children.Add(current);
                         last = current;
                     }
                     else if(Middle(current) <= Middle(last) && (Middle(current) <= Middle(min)))
                     {
-                        current.Stroke = Stroke(j);
+                        current.Stroke = Stroke();
                         Paint.Children.Add(current);
                         min = current;
                     }
