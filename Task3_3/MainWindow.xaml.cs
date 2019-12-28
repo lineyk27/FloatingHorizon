@@ -1,18 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Diagnostics;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.Globalization;
+using System.Diagnostics;
 
 namespace Task3_3
 {
@@ -26,11 +17,10 @@ namespace Task3_3
 
         Color col = Colors.Green;
         bool Pointable = false;
-        int CountHorizons = 10;
-        int CountPoints = 10;
+        //bool DebugOn = false;
+        int CountHorizons = 6;
+        int CountPoints = 14;
         double Thickness = 1.5;
-
-        GeometryGroup group = new GeometryGroup();
 
         Line[,] Lines;
         double StepX
@@ -66,30 +56,37 @@ namespace Task3_3
             InitializeComponent();
             Lines = new Line[CountPoints, CountHorizons];
         }
-        public Brush Stroke(Color col, int i = 4)
+        public Brush Stroke(Color col, int? horizon=null)
         {
+            if (horizon != null)
+            {
+                int start = 50;
+                byte g = (byte)(start + ((int)horizon * ((255-start)/CountHorizons)));
+                byte r = 0;
+                byte b = 0;
+                Debug.WriteLine($"r-{r}, g-{g}, b-{b}, horizon-{horizon}");
+                col = Color.FromRgb(r, g, b);
+            }
             var stroke = new SolidColorBrush(col);
             stroke.Opacity = 10;
             return stroke;
         }
         public void GenerateLines()
         {
-            int size = 48;
+            int size = 53;
             int k = 0;
-            int l = 0;
+            int l;
 
             double magic = 0.0;
             double m_step = 0;
 
-            double added = (CountPoints % 2 == 0) ? StepX : 0;
-
             double startx, starty;
-            for(double z = LowBound; z < UpBound; z += StepZ)
+            for(double z = LowBound; z <= UpBound + StepZ && k < CountHorizons; z += StepZ)
             {
                 startx = LowBound;
                 starty = func(LowBound, z);
                 l = 0;
-                for (double x = LowBound + StepX; x <= UpBound + StepX; x += StepX)
+                for (double x = LowBound + StepX; x <= UpBound + StepX && l < CountPoints; x += StepX)
                 {
                     var line = new Line();
                     line.StrokeThickness = Thickness;
@@ -115,7 +112,57 @@ namespace Task3_3
         public void Draw()
         {
             GenerateLines();
-            DrawLines();
+            Line[,] lines = MakeIntersected();
+            //DrawLines();
+            Draws(lines);
+        }
+
+        public Line[,] MakeIntersected()
+        {
+            Line[,] lines = new Line[CountPoints, CountHorizons];
+            for (int i = 0; i < CountPoints; i++)
+            {
+                Line last = null;
+                Line min = null;
+                for (int j = 0; j < CountHorizons; j++)
+                {
+                    var current = Lines[i, j];
+                    if (j == 0)
+                    {
+                        last = current;
+                        min = last;
+                    }
+                    if (Middle(current) >= Middle(last) && !CheckIntersect(last, current))
+                    {
+                        last = current;
+                        lines[i, j] = current;
+                        lines[i, j].Stroke = Stroke(col);
+                    }
+                    else if ((Middle(current) < Middle(min)) && !CheckIntersect(min, current))
+                    {
+                        min = current;
+                        lines[i, j] = current;
+                        lines[i, j].Stroke = Stroke(col);
+                    }
+                    else if (CheckIntersect(last, current))
+                    {
+                        lines[i,j] = GetIntersection(last, current);
+                        last = lines[i, j];
+                        //lines[i, j].Stroke = Stroke(col);
+                    }
+                    else if (CheckIntersect(min, current))
+                    {
+                        lines[i, j] = GetIntersection(min, current, low:true);
+                        min = lines[i, j];
+                        //lines[i, j].Stroke = Stroke(col);
+                    }
+                    else 
+                    {
+                        lines[i, j] = null;
+                    }
+                }
+            }
+            return lines;
         }
 
         public void DrawLines()
@@ -133,31 +180,45 @@ namespace Task3_3
                         last = current;
                         min = last;
                     }
-                    if(Middle(current) >= Middle(last))
+                    if(Middle(current) >= Middle(last) && !CheckIntersect(last, current))
                     {
                         current.Stroke = Stroke(col);
                         //Paint.Children.Add(current);
                         DrawUp(current, last);
                         last = current;
                     }
-                    else if(Middle(current) <= Middle(last) && (Middle(current) <= Middle(min)))
+                    else if(/*Middle(current) <= Middle(last) &&*/(Middle(current) < Middle(min)) && !CheckIntersect(min, current))
                     {
                         current.Stroke = Stroke(col);
                         //Paint.Children.Add(current);
                         DrawDown(min, current);
                         min = current;
                     }
-                    else if (CheckIntersect(current, last))
+                    else if (CheckIntersect(last, current))
                     {
-                        DrawUp(current, last);
+                        DrawIntersected(last, current);
                     }
                     else if (CheckIntersect(min, current))
                     {
-                        DrawDown(min, current);
+                        DrawIntersected(min, current, low:true);
                     }
                 }
             }
         }
+        public void Draws(Line[,] lines)
+        {
+            for (int i = 0; i < CountPoints; i++)
+            {
+                for (int j = 0; j < CountHorizons; j++)
+                {
+                    if (lines[i, j] != null)
+                    {
+                        Paint.Children.Add(lines[i, j]);
+                    }
+                }
+            }
+        }
+
         public bool CheckIntersect(Line p1, Line p2)
         {
             bool res = false;
@@ -171,89 +232,113 @@ namespace Task3_3
             }
             return res;
         }
-        public void DrawDown(Line up, Line down)
+
+        public Line GetIntersection(Line upper, Line lowwer, bool low = false)
         {
-            if (!CheckIntersect(up, down))
+            var p = LinesIntersection(upper, lowwer);
+            DrawPoint(p, Colors.White);
+
+            var line = new Line();
+            line.X1 = p.X;
+            line.Y1 = p.Y;
+            if (low)
             {
-                if (!Paint.Children.Contains(up))
+                if (p.Y > lowwer.Y2)
                 {
-                    Paint.Children.Add(up);
+                    line.X2 = lowwer.X2;
+                    line.Y2 = lowwer.Y2;
+                    line.Stroke = Stroke(Colors.White);
                 }
-                if (!Paint.Children.Contains(down))
+                else
                 {
-                    Paint.Children.Add(down);
+                    line.X2 = lowwer.X1;
+                    line.Y2 = lowwer.Y1;
+                    line.Stroke = Stroke(Colors.Tomato);
                 }
             }
             else
             {
-                var p = LinesIntersection(up, down);
-
-                //DrawPoint(p, Colors.Blue);
-                var line = new Line();
-                if (up.Y1 > p.Y)
+                if (p.Y < lowwer.Y2)
                 {
-                    line.X1 = down.X1;
-                    line.Y1 = down.Y1;
-                    DrawPoint(p, Colors.Aquamarine);
-                    line.Stroke = Stroke(Colors.Red);
-
-                    line.X2 = p.X;
-                    line.Y2 = p.Y;
+                    line.X2 = lowwer.X2;
+                    line.Y2 = lowwer.Y2;
+                    line.Stroke = Stroke(Colors.Pink);
                 }
                 else
                 {
-                    line.X1 = down.X2;
-                    line.Y1 = down.Y2;
-                    DrawPoint(p, Colors.White);
-                    line.Stroke = Stroke(Colors.White);
-
-                    line.X2 = p.X;
-                    line.Y2 = p.Y;
+                    line.X2 = lowwer.X1;
+                    line.Y2 = lowwer.Y1;
+                    line.Stroke = Stroke(Colors.Orange);
                 }
-                Paint.Children.Add(line);
             }
+            line.Stroke = Stroke(Colors.Green);
+            return line;
+        }
+
+        public void DrawIntersected(Line upper, Line lowwer, bool low = false)
+        {
+            var p = LinesIntersection(upper, lowwer);
+
+            DrawPoint(p, Colors.White);
+
+            var line = new Line();
+            line.X1 = p.X;
+            line.Y1 = p.Y;
+            if (low)
+            {
+                if(p.Y > lowwer.Y2)
+                {
+                    line.X2 = lowwer.X2;
+                    line.Y2 = lowwer.Y2;
+                    line.Stroke = Stroke(col);
+                }
+                else
+                {
+                    line.X2 = lowwer.X1;
+                    line.Y2 = lowwer.Y1;
+                    line.Stroke = Stroke(col);
+                }
+            }
+            else
+            {
+                if (p.Y < lowwer.Y2)
+                {
+                    line.X2 = lowwer.X2;
+                    line.Y2 = lowwer.Y2;
+                    line.Stroke = Stroke(Colors.Red);
+                }
+                else
+                {
+                    line.X2 = lowwer.X1;
+                    line.Y2 = lowwer.Y1;
+                    line.Stroke = Stroke(Colors.Orange);
+                }
+            }
+            line.Stroke = Stroke(col);
+            line.StrokeThickness = 1;
+            Paint.Children.Add(line);
+        }
+        public void DrawDown(Line upper, Line lowwer)
+        {
+            if (!Paint.Children.Contains(upper))
+            {
+                Paint.Children.Add(upper);
+            }
+            if (!Paint.Children.Contains(lowwer))
+            {
+                Paint.Children.Add(lowwer);
+            }
+
         }
         public void DrawUp(Line up, Line down)
         {
-
-            if (!CheckIntersect(up, down))
+            if (!Paint.Children.Contains(up))
             {
-                if (!Paint.Children.Contains(up))
-                {
-                    Paint.Children.Add(up);
-                }
-                if (!Paint.Children.Contains(down))
-                {
-                    Paint.Children.Add(down);
-                }
+                Paint.Children.Add(up);
             }
-            else
+            if (!Paint.Children.Contains(down))
             {
-                var p = LinesIntersection(up, down);
-
-                //DrawPoint(p, Colors.Red);
-                var line = new Line();
-                if (up.Y1 > p.Y) {
-                    line.X1 = up.X1;
-                    line.Y1 = up.Y1;
-                    DrawPoint(p, Colors.Cyan);
-                    line.Stroke = Stroke(Colors.Yellow);
-
-                    line.X2 = p.X;
-                    line.Y2 = p.Y;
-                }
-                else
-                {
-                    line.X1 = up.X2;
-                    line.Y1 = up.Y2;
-                    DrawPoint(p, Colors.Brown);
-                    line.Stroke = Stroke(Colors.Blue);
-
-                    line.X2 = p.X;
-                    line.Y2 = p.Y;
-                }
-                Paint.Children.Add(line);
-
+                Paint.Children.Add(down);
             }
         }
         public void DrawPoint(Point p, Color color)
@@ -302,6 +387,7 @@ namespace Task3_3
         public double Middle(Line line)
         {
             return Math.Abs(line.Y2 + line.Y1) / 2;
+            //return line.Y1;
         }
         public double R(double x, double z)
         {
